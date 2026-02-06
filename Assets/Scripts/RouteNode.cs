@@ -8,6 +8,7 @@ public class RouteNode : MonoBehaviour
     public RouteNode defaultNext;
     public RouteNode leftNext;
     public RouteNode rightNext;
+    public RouteNode previous;
 
     // Визуальный индикатор (опционально)
     // public Renderer indicator;
@@ -24,6 +25,10 @@ public class RouteNode : MonoBehaviour
             SwitchMode.Right => rightNext,
             _ => defaultNext
         };
+    }
+
+    public RouteNode GetPrevious(){
+        return this.previous;
     }
 
     // Обновить цвет индикатора
