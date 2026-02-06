@@ -165,8 +165,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RouteNode
   nodeName: Node
   defaultNext: {fileID: 1184024042}
-  leftNext: {fileID: 0}
-  rightNext: {fileID: 0}
+  leftNext: {fileID: 1184024042}
+  rightNext: {fileID: 1184024042}
+  previous: {fileID: 2005802024}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -704,8 +705,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RouteNode
   nodeName: Node
   defaultNext: {fileID: 1184024042}
-  leftNext: {fileID: 0}
-  rightNext: {fileID: 0}
+  leftNext: {fileID: 1184024042}
+  rightNext: {fileID: 1184024042}
+  previous: {fileID: 2005802024}
 --- !u!1 &982640073
 GameObject:
   m_ObjectHideFlags: 0
@@ -2670,6 +2672,7 @@ MonoBehaviour:
   defaultNext: {fileID: 2005802024}
   leftNext: {fileID: 0}
   rightNext: {fileID: 0}
+  previous: {fileID: 0}
 --- !u!1 &1434806757
 GameObject:
   m_ObjectHideFlags: 0
@@ -4351,6 +4354,7 @@ MonoBehaviour:
   passiveDeceleration: 0.8
   startNode: {fileID: 1184024042}
   switchMode: 0
+  currentDirection: 0
 --- !u!1 &2005802021
 GameObject:
   m_ObjectHideFlags: 0
@@ -4399,6 +4403,7 @@ MonoBehaviour:
   defaultNext: {fileID: 59205373}
   leftNext: {fileID: 59205373}
   rightNext: {fileID: 884857263}
+  previous: {fileID: 1184024042}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

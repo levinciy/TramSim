@@ -2,11 +2,18 @@ using UnityEngine;
 
 public class TramOnRails : MonoBehaviour
 {
+
+    [Header("Звук")]
+    public AudioClip hornSound;
+    private AudioSource audioSource;
+
     [Header("Физика")]
     public float maxSpeed = 15f;
     public float acceleration = 1.5f;
     public float brakePower = 3f;
     public float passiveDeceleration = 0.8f;
+    private TramDirection requestedDirection; 
+    private bool isChangingDirection = false;
 
     [Header("Маршрут")]
     public RouteNode startNode; // задаётся в инспекторе
@@ -20,36 +27,72 @@ public class TramOnRails : MonoBehaviour
 
     public TramDirection currentDirection = TramDirection.Forward;
 
-    void Start()
-    {
+    void Start(){
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         rb.useGravity = false;
         currentNode = startNode;
+        audioSource = GetComponent<AudioSource>();
+        hornSound = audioSource.clip;
+    
     }
 
     void Update(){
-        if (Input.GetKeyDown(KeyCode.Q)) currentDirection = TramDirection.Forward;
-        if (Input.GetKeyDown(KeyCode.E)) currentDirection = TramDirection.Reverse;
+        if (Input.GetKeyDown(KeyCode.Q)){
+            if (currentDirection != TramDirection.Forward)
+            {
+                requestedDirection = TramDirection.Forward;
+                isChangingDirection = true;
+            }
+        }
+        if (Input.GetKeyDown(KeyCode.E)){
+            if (currentDirection != TramDirection.Reverse)
+            {
+                requestedDirection = TramDirection.Reverse;
+                isChangingDirection = true;
+            }
+        }
 
     // Управление скоростью
         bool isAccelerating = Input.GetKey(KeyCode.W);
         bool isBraking = Input.GetKey(KeyCode.S);
 
-        if (isAccelerating)
-            currentSpeed += acceleration * Time.deltaTime;
-        else if (isBraking)
-            currentSpeed -= brakePower * Time.deltaTime;
-        else
-            currentSpeed -= passiveDeceleration * Time.deltaTime;
+        bool canAccelerate = !isChangingDirection;
 
-        // Скорость не может быть отрицательной (направление задаётся отдельно)
+        if (isAccelerating && canAccelerate)
+        {
+            currentSpeed += acceleration * Time.deltaTime;
+        }
+        else if (isBraking)
+        {
+            currentSpeed -= brakePower * Time.deltaTime;
+        }
+        else
+        {
+            currentSpeed -= passiveDeceleration * Time.deltaTime;
+        }
+
+        // Ограничение скорости
         currentSpeed = Mathf.Max(0f, Mathf.Min(currentSpeed, maxSpeed));
+
+        // Когда скорость достигла нуля — применяем новое направление
+        if (isChangingDirection && currentSpeed <= 0.1f)
+        {
+            currentDirection = requestedDirection;
+            isChangingDirection = false;
+            Debug.Log($"Направление изменено на: {currentDirection}");
+        }
 
         // Управление режимом стрелок (временно)
         if (Input.GetKeyDown(KeyCode.F)) switchMode = SwitchMode.Neutral;
         if (Input.GetKeyDown(KeyCode.A)) switchMode = SwitchMode.Left;
         if (Input.GetKeyDown(KeyCode.D)) switchMode = SwitchMode.Right;
+
+
+        if (Input.GetKeyDown(KeyCode.H)){
+            Debug.Log("Нажата H!");
+            PlayHorn();
+        }
     }
 
     void FixedUpdate(){
@@ -78,7 +121,6 @@ public class TramOnRails : MonoBehaviour
         }
 
         // --- Поворот к цели (только для вперёд!) ---
-        // При реверсе: НЕ поворачиваем трамвай — водитель смотрит вперёд!
         if (currentDirection == TramDirection.Forward)
         {
             Vector3 targetDir = (currentNode.transform.position - transform.position).normalized;
@@ -90,7 +132,6 @@ public class TramOnRails : MonoBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.fixedDeltaTime * 8f);
             }
         }
-        // При реверсе: оставляем текущую ориентацию (как есть) — нет поворота!
 
         // --- Движение ---
         Vector3 flatMove = new Vector3(moveDirection.x, 0, moveDirection.z).normalized;
@@ -104,8 +145,7 @@ public class TramOnRails : MonoBehaviour
         {
             if (nextNode != null)
             {
-                // Обновляем индикатор (если нужен)
-                // currentNode.UpdateIndicator(switchMode); // опционально
+                // currentNode.UpdateIndicator(switchMode); 
 
                 currentNode = nextNode;
                 Debug.Log($"Переход: {currentDirection} → {currentNode.nodeName}");
@@ -116,5 +156,11 @@ public class TramOnRails : MonoBehaviour
                 currentNode = null;
             }
         }
+    }
+
+    private void PlayHorn(){
+   
+        audioSource.PlayOneShot(hornSound, 0.8f);
+        Debug.Log("Гудок воспроизведён!");
     }
 }
