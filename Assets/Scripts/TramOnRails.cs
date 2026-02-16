@@ -3,6 +3,8 @@ using UnityEngine;
 public class TramOnRails : MonoBehaviour
 {
 
+    public DriverEvaluator evaluator ;
+
     [Header("Звук")]
     public AudioClip hornSound;
     private AudioSource audioSource;
@@ -33,8 +35,8 @@ public class TramOnRails : MonoBehaviour
         rb.useGravity = false;
         currentNode = startNode;
         audioSource = GetComponent<AudioSource>();
-        hornSound = audioSource.clip;
-    
+        //hornSound = audioSource.clip;
+        InvokeRepeating(nameof(CheckSpeedLimit), 1f, 1f);
     }
 
     void Update(){
@@ -90,7 +92,7 @@ public class TramOnRails : MonoBehaviour
 
 
         if (Input.GetKeyDown(KeyCode.H)){
-            Debug.Log("Нажата H!");
+            //Debug.Log("Нажата H!");
             PlayHorn();
         }
     }
@@ -156,7 +158,25 @@ public class TramOnRails : MonoBehaviour
                 currentNode = null;
             }
         }
+
+
+        
     }
+
+    private void CheckSpeedLimit()
+        {
+            
+            if (currentNode == null || evaluator == null){
+                 return;}
+
+            if (currentNode.hasSpeedLimit && currentSpeed > currentNode.maxSpeed + 0.5f)
+            {
+                string reason = $"Превышение скорости в '{currentNode.nodeName}': {currentSpeed:F1} > {currentNode.maxSpeed:F1} м/с";
+                evaluator.addPenalty(reason);
+                //evaluator.addSpeedingPenalty(currentSpeed, currentNode.maxSpeed, currentNode.nodeName);
+                
+            }
+        }
 
     private void PlayHorn(){
    

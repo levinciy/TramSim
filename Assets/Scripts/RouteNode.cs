@@ -10,6 +10,12 @@ public class RouteNode : MonoBehaviour
     public RouteNode rightNext;
     public RouteNode previous;
 
+    public bool isSwitchPoint = false;
+    [Header("Ограничения")]
+    public bool hasSpeedLimit = false;
+    [Tooltip("Максимальная разрешённая скорость в м/с")]
+    public float maxSpeed=15f;
+
     // Визуальный индикатор (опционально)
     // public Renderer indicator;
     // public Color neutralColor = Color.gray;
@@ -19,6 +25,11 @@ public class RouteNode : MonoBehaviour
     // Получить следующий узел по режиму
     public RouteNode GetNextNode(SwitchMode mode)
     {
+
+        if (!isSwitchPoint)
+            return defaultNext;
+
+
         return mode switch
         {
             SwitchMode.Left => leftNext,
