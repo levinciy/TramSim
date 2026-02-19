@@ -3,6 +3,7 @@ using TMPro;
 
 public class DriverEvaluator : MonoBehaviour
 {
+ public GameSettings gameSettings;
  public MistakeSignal signal;
  private int penalties = 0;
  private System.Collections.Generic.List<string> violations = new System.Collections.Generic.List<string>();
@@ -32,30 +33,30 @@ private ReportMode currentReportMode = ReportMode.Normal;
             violationText.gameObject.SetActive(false);
     }
  
-    void Update()
-{
-    // if (Input.GetKeyDown(KeyCode.R))
-    // {
-    //     ShowReport();
-    // }
-    if (reportPanel.activeSelf){
-        if(currentReportMode == ReportMode.Normal){
+//     void Update()
+// {
 
-            if (Input.GetKeyDown(KeyCode.R)){
-                HideReport();
-            }
+//     if (reportPanel.activeSelf){
+//         if(currentReportMode == ReportMode.Normal){
 
-        }
-    }
-    else{
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            ShowReport();
-        }
-    }
-}
+//             if (Input.GetKeyDown(KeyCode.R)){
+//                 HideReport();
+//             }
+
+//         }
+//     }
+//     else{
+//         if (Input.GetKeyDown(KeyCode.R))
+//         {
+//             ShowReport();
+//         }
+//     }
+// }
 
  public void addPenalty(string reason){
+
+    if (gameSettings.isScoringDisabled)
+        return;
 
     float currentTime = Time.time;
     if (currentTime - lastViolationTime < violationCooldown)
@@ -63,7 +64,8 @@ private ReportMode currentReportMode = ReportMode.Normal;
         return;
     }
 
-    if (penalties >= maxPenalties)
+    //if (penalties >= maxPenalties)
+    if (penalties >= (gameSettings?.maxPenalties ?? maxPenalties))
     {
         Debug.Log("Превышен лимит нарушений.");
         ShowGameOver();
@@ -92,31 +94,31 @@ private ReportMode currentReportMode = ReportMode.Normal;
 public GameObject reportPanel; 
 public TMP_Text violationsListText; 
 
-public void ShowReport()
-{
-    if(currentReportMode!=ReportMode.Normal){
-        gameOverPanel.SetActive(false);
-    }
-    string report = GetViolationReport();
-    violationsListText.text = report;
-    reportPanel.SetActive(true);
+// public void ShowReport()
+// {
+//     if(currentReportMode!=ReportMode.Normal){
+//         gameOverPanel.SetActive(false);
+//     }
+//     string report = GetViolationReport();
+//     violationsListText.text = report;
+//     reportPanel.SetActive(true);
 
-    Time.timeScale = 0f; 
-}
+//     Time.timeScale = 0f; 
+// }
 
-public void HideReport()
-{
-    if(currentReportMode==ReportMode.Normal){
-        reportPanel.SetActive(false);
-        Time.timeScale = 1f;
-    }
+// public void HideReport()
+// {
+//     if(currentReportMode==ReportMode.Normal){
+//         reportPanel.SetActive(false);
+//         Time.timeScale = 1f;
+//     }
 
-    else{
-        reportPanel.SetActive(false);
-        gameOverPanel.SetActive(true);
+//     else{
+//         reportPanel.SetActive(false);
+//         gameOverPanel.SetActive(true);
 
-    }
-}
+//     }
+// }
 
 public string GetViolationReport()
     {
@@ -140,13 +142,65 @@ public void ReturnToMainMenu(){
     UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
 }
 
-public void ShowGameOver(){
-    currentReportMode = ReportMode.GameOver;
-    gameOverMessageText.text = "Превышено допустимое число нарушений!";
-    gameOverPanel.SetActive(true);
-    Time.timeScale=0f;
-}
+// public void ShowGameOver(){
+//     currentReportMode = ReportMode.GameOver;
+//     gameOverMessageText.text = "Превышено допустимое число нарушений!";
+//     gameOverPanel.SetActive(true);
+//     Time.timeScale=0f;
+// }
 
+void Update()
+    {
+        // Только если отчёт открыт в режиме Normal
+        if (UIManager.Instance.currentMenu == UIManager.ActiveMenu.Report && 
+            currentReportMode == ReportMode.Normal)
+        {
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                HideReport();
+            }
+        }
+        // Открытие отчёта — только из игры
+        else if (UIManager.Instance.currentMenu == UIManager.ActiveMenu.None)
+        {
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ShowReport();
+            }
+        }
+    }
 
+    public void ShowReport()
+    {
+        if (currentReportMode == ReportMode.GameOver)
+        {
+            gameOverPanel.SetActive(false);
+        }
+        violationsListText.text = GetViolationReport();
+        reportPanel.SetActive(true);
+        UIManager.Instance.SetMenu(UIManager.ActiveMenu.Report);
+    }
+
+    public void HideReport()
+    {
+        reportPanel.SetActive(false);
+        if (currentReportMode == ReportMode.GameOver)
+        {
+            gameOverPanel.SetActive(true);
+            UIManager.Instance.SetMenu(UIManager.ActiveMenu.GameOver);
+        }
+        else
+        {
+            UIManager.Instance.SetMenu(UIManager.ActiveMenu.None);
+        }
+    }
+
+    public void ShowGameOver()
+    {
+        currentReportMode = ReportMode.GameOver;
+        gameOverMessageText.text = "Превышено допустимое число нарушений!";
+        gameOverPanel.SetActive(true);
+        UIManager.Instance.SetMenu(UIManager.ActiveMenu.GameOver);
+    }
 
 }
