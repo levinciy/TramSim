@@ -15,12 +15,22 @@ public class PressableButton : MonoBehaviour
     private Vector3 targetPosition;
     private bool isPressed = false;
 
+
+    private AudioSource audioSource;
+    public AudioClip pressSound;
+    private bool isSoundPlaying = false;
+
     void Start()
     {
 
 
         originalLocalPosition = buttonPart.localPosition;
         targetPosition = originalLocalPosition;
+
+        audioSource = GetComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.loop = true; 
+        audioSource.volume = 0.7f;
     }
 
     void Update()
@@ -31,14 +41,36 @@ public class PressableButton : MonoBehaviour
         {
             isPressed = true;
             targetPosition = originalLocalPosition + pressedOffset;
+            StartSound();
         }
         else if (!shouldPress && isPressed)
         {
             isPressed = false;
             targetPosition = originalLocalPosition;
+            StopSound();
         }
 
         buttonPart.localPosition = Vector3.Lerp(buttonPart.localPosition, targetPosition, Time.deltaTime * pressSpeed);
+    }
+
+
+    private void StartSound()
+    {
+        if (pressSound != null && !isSoundPlaying)
+        {
+            audioSource.clip = pressSound;
+            audioSource.Play();
+            isSoundPlaying = true;
+        }
+    }
+
+    private void StopSound()
+    {
+        if (isSoundPlaying)
+        {
+            audioSource.Stop();
+            isSoundPlaying = false;
+        }
     }
 
 

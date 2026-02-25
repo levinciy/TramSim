@@ -5,9 +5,9 @@ public class TramOnRails : MonoBehaviour
 
     public DriverEvaluator evaluator ;
 
-    [Header("Звук")]
-    public AudioClip hornSound;
-    private AudioSource audioSource;
+    // [Header("Звук")]
+    // public AudioClip hornSound;
+    // private AudioSource audioSource;
 
     [Header("Физика")]
     public float maxSpeed = 15f;
@@ -34,7 +34,7 @@ public class TramOnRails : MonoBehaviour
         rb.freezeRotation = true;
         rb.useGravity = false;
         currentNode = startNode;
-        audioSource = GetComponent<AudioSource>();
+        //audioSource = GetComponent<AudioSource>();
         //hornSound = audioSource.clip;
         InvokeRepeating(nameof(CheckSpeedLimit), 1f, 1f);
     }
@@ -91,10 +91,10 @@ public class TramOnRails : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.D)) switchMode = SwitchMode.Right;
 
 
-        if (Input.GetKeyDown(KeyCode.H)){
-            //Debug.Log("Нажата H!");
-            PlayHorn();
-        }
+        // if (Input.GetKeyDown(KeyCode.H)){
+        //     //Debug.Log("Нажата H!");
+        //     PlayHorn();
+        // }
     }
 
     void FixedUpdate(){
@@ -178,9 +178,9 @@ public class TramOnRails : MonoBehaviour
             }
         }
 
-    private void PlayHorn(){
+    // private void PlayHorn(){
    
-        audioSource.PlayOneShot(hornSound, 0.8f);
-        Debug.Log("Гудок воспроизведён!");
-    }
+    //     audioSource.PlayOneShot(hornSound, 0.8f);
+    //     Debug.Log("Гудок воспроизведён!");
+    // }
 }
