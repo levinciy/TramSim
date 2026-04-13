@@ -13,7 +13,7 @@ public class DriverEvaluator : MonoBehaviour
  private float lastViolationTime = -10f; 
  [Header("UI")]
  public TMP_Text penaltyText;
- public TMP_Text violationText;
+
 
 
  public bool IsFailed() => penalties >= maxPenalties;
@@ -28,9 +28,9 @@ private ReportMode currentReportMode = ReportMode.Normal;
 
  void Start()
     {
+       maxPenalties = gameSettings.GetMaxPenalties();
         UpdatePenaltyUI();
-        if (violationText != null)
-            violationText.gameObject.SetActive(false);
+
     }
  
 //     void Update()
@@ -55,7 +55,7 @@ private ReportMode currentReportMode = ReportMode.Normal;
 
  public void addPenalty(string reason){
 
-    if (gameSettings.isScoringDisabled)
+    if (!gameSettings.IsScoringEnabled())
         return;
 
     float currentTime = Time.time;
@@ -64,8 +64,8 @@ private ReportMode currentReportMode = ReportMode.Normal;
         return;
     }
 
-    //if (penalties >= maxPenalties)
-    if (penalties >= (gameSettings?.maxPenalties ?? maxPenalties))
+    if (penalties >= maxPenalties)
+    //if (penalties >= (gameSettings?.maxPenalties ?? maxPenalties))
     {
         Debug.Log("Превышен лимит нарушений.");
         ShowGameOver();
@@ -81,8 +81,14 @@ private ReportMode currentReportMode = ReportMode.Normal;
 
  }
 
- private void UpdatePenaltyUI()
+ public void UpdatePenaltyUI()
     {
+        if(!gameSettings.IsScoringEnabled()){
+            penaltyText.gameObject.SetActive(false);
+        }
+        else{
+            penaltyText.gameObject.SetActive(true);
+        }
         if (penaltyText != null)
             penaltyText.text = $"Штрафы: {penalties}/{maxPenalties}";
     }
@@ -138,6 +144,7 @@ public GameObject gameOverPanel;
 public TMP_Text gameOverMessageText;
 
 public void ReturnToMainMenu(){
+    UIManager.Instance.SetMenu(UIManager.ActiveMenu.None);
     Time.timeScale = 1f;
     UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
 }

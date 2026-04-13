@@ -16,13 +16,22 @@ public class RouteNode : MonoBehaviour
     [Tooltip("Максимальная разрешённая скорость в м/с")]
     public float maxSpeed=15f;
 
-    // Визуальный индикатор (опционально)
-    // public Renderer indicator;
-    // public Color neutralColor = Color.gray;
-    // public Color leftColor = Color.blue;
-    // public Color rightColor = Color.red;
+    // public bool isStopZone = false; 
+    // public float stopZoneRadius = 8f;
 
-    // Получить следующий узел по режиму
+    // public enum NodeType
+    // {
+    //     Regular,
+    //     StopZoneStart,
+    //     StopZoneEnd
+    // }
+
+    // public NodeType nodeType = NodeType.Regular;
+
+    public bool isStopNode = false;      // ← это начало зоны
+    public float stopZoneLength = 8f;    // длина зоны вперёд по маршруту
+    public string stopName = "Остановка";
+
     public RouteNode GetNextNode(SwitchMode mode)
     {
 
@@ -39,20 +48,8 @@ public class RouteNode : MonoBehaviour
     }
 
     public RouteNode GetPrevious(){
-        return this.previous;
+        return previous;
     }
 
-    // Обновить цвет индикатора
-    // public void UpdateIndicator(SwitchMode mode)
-    // {
-    //     if (indicator != null)
-    //     {
-    //         indicator.material.color = mode switch
-    //         {
-    //             SwitchMode.Left => leftColor,
-    //             SwitchMode.Right => rightColor,
-    //             _ => neutralColor
-    //         };
-    //     }
-    // }
+
 }

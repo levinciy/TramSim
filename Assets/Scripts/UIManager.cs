@@ -34,5 +34,5 @@ public class UIManager : MonoBehaviour
         Time.timeScale = (menu == ActiveMenu.None) ? 1f : 0f;
     }
 
-    public bool IsAnyMenuOpen() => currentMenu != ActiveMenu.None;
+    //public bool IsAnyMenuOpen() => currentMenu != ActiveMenu.None;
 }

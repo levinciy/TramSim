@@ -13,8 +13,9 @@ public class GameSettings : MonoBehaviour
     public TMP_InputField maxPenaltiesInput;
 
     [Header("Значения")]
-    public bool isScoringDisabled = false;
-    public int maxPenalties = 10;
+    //public bool isScoringDisabled = false;
+    // public int maxPenalties = 10;
+    public DriverEvaluator eval;
 
     private bool savedScoringDisabled = false;
     private int savedMaxPenalties = 10;
@@ -82,11 +83,14 @@ public class GameSettings : MonoBehaviour
         if (int.TryParse(maxPenaltiesInput.text, out int inputVal))
         {
             savedMaxPenalties = Mathf.Clamp(inputVal, 1, 20);
+            eval.maxPenalties = savedMaxPenalties;
         }
         else
         {
             savedMaxPenalties = Mathf.RoundToInt(maxPenaltiesSlider.value);
+            eval.maxPenalties = savedMaxPenalties;
         }
+        eval.UpdatePenaltyUI();
 
         // Сохраняем
         PlayerPrefs.SetInt(KEY_SCORING_DISABLED, savedScoringDisabled ? 1 : 0);
