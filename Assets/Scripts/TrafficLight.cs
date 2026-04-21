@@ -19,8 +19,10 @@ public class TrafficLight : MonoBehaviour {
     public Renderer yellowLight;
     public Renderer greenLight;
 
-    // public Material lightOnMaterial;  // Материал с эмиссией/свечением
-    // public Material lightOffMaterial; // Матовый/выключенный материал
+    public Material lightOnMaterialRed;  // Материал с эмиссией/свечением
+    public Material lightOnMaterialYellow; 
+    public Material lightOnMaterialGreen; 
+    public Material lightOffMaterial; // Матовый/выключенный материал
 
     [Header("Состояние")]
     public LightColors CurrentLight ;
@@ -69,17 +71,17 @@ public class TrafficLight : MonoBehaviour {
     private void SetLight(LightColors color)
     {
         CurrentLight = color;
-        //UpdateVisuals();
+        UpdateVisuals();
         OnLightChanged?.Invoke(color);
     }
 
-    // private void UpdateVisuals()
-    // {
-    //     // Простой вариант: переключение материалов
-    //     if (redLight)   redLight.material = (CurrentLight == LightColors.Red) ? lightOnMaterial : lightOffMaterial;
-    //     if (yellowLight) yellowLight.material = (CurrentLight == LightColors.Yellow) ? lightOnMaterial : lightOffMaterial;
-    //     if (greenLight) greenLight.material = (CurrentLight == LightColors.Green) ? lightOnMaterial : lightOffMaterial;
-    // }
+    private void UpdateVisuals()
+    {
+        // Простой вариант: переключение материалов
+        if (redLight)   redLight.material = (CurrentLight == LightColors.Red) ? lightOnMaterialRed : lightOffMaterial;
+        if (yellowLight) yellowLight.material = (CurrentLight == LightColors.Yellow) ? lightOnMaterialYellow : lightOffMaterial;
+        if (greenLight) greenLight.material = (CurrentLight == LightColors.Green) ? lightOnMaterialGreen : lightOffMaterial;
+    }
 
     [Header("Позиция стоп-линии")]
     // Смещение стоп-линии от центра светофора (вперёд по оси Z светофора)
