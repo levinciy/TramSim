@@ -380,16 +380,26 @@ using UnityEngine;
 
 public class TramOnRails : MonoBehaviour
 {
+
+    [Header("Управление скоростью (целевая скорость)")]
+    public float speedChangeRate = 1.5f;   // Изменение скорости в секунду при удержании W/S
+    public float emergencyBrakePower = 6f; // Мощность экстренного тормоза (с инерцией)
+
+    private bool isEmergencyBraking = false;
+
     [Header("Физика")]
     public float maxSpeed = 15f;
-    public float acceleration = 1.5f;
-    public float brakePower = 3f;
-    public float passiveDeceleration = 0.8f;
+    public float acceleration = 2f;        // Как быстро разгоняемся до targetSpeed
+    public float brakePower = 4f;          // Как быстро тормозим
+    public float passiveDeceleration = 0.5f; // Естественное замедление
+
+    // [Header("Управление скоростью (целевая скорость)")]
+    // public float speedStep = 2f;           // На сколько меняется targetSpeed за нажатие
+    // public float emergencyBrakePower = 8f; // Мощность экстренного тормоза
 
     [Header("Маршрут")]
     public RouteNode startNode;
     private RouteNode currentNode;
-    private RouteNode targetNode;
 
     [Header("Управление")]
     public SwitchMode switchMode = SwitchMode.Neutral;
@@ -397,6 +407,8 @@ public class TramOnRails : MonoBehaviour
 
     private Rigidbody rb;
     private float currentSpeed = 0f;
+    private float targetSpeed = 0f;        // 🔑 НОВАЯ ПЕРЕМЕННАЯ: целевая скорость
+    
     private bool isChangingDirection = false;
     private TramDirection requestedDirection;
 
@@ -417,181 +429,289 @@ public class TramOnRails : MonoBehaviour
         rb.useGravity = false;
         
         currentNode = startNode;
-        targetNode = GetNextTargetNode();
         lastPosition = transform.position;
         
         InvokeRepeating(nameof(CheckSpeedLimit), 1f, 1f);
+
+        if (trafficLights != null)
+        {
+            foreach (var light in trafficLights)
+            {
+                approachingOnRed[light] = false;
+                hasCrossedOnRed[light] = false;
+            }
+        }
     }
 
     void Update()
     {
-        // Переключение направления
+        // === 1. Переключение направления (реверс) ===
         if (Input.GetKeyDown(KeyCode.Q) && currentDirection != TramDirection.Forward)
-    {
-        requestedDirection = TramDirection.Forward;
-        isChangingDirection = true;
-    }
-    if (Input.GetKeyDown(KeyCode.E) && currentDirection != TramDirection.Reverse)
-    {
-        requestedDirection = TramDirection.Reverse;
-        isChangingDirection = true;
-    }
-
-        // Управление скоростью
-        bool isAccelerating = Input.GetKey(KeyCode.W);
-        bool isBraking = Input.GetKey(KeyCode.S);
-        bool canAccelerate = !isChangingDirection;
-
-        if (isAccelerating && canAccelerate)
-            currentSpeed += acceleration * Time.deltaTime;
-        else if (isBraking)
-            currentSpeed -= brakePower * Time.deltaTime;
-        else
-            currentSpeed -= passiveDeceleration * Time.deltaTime;
-
-        currentSpeed = Mathf.Max(0f, Mathf.Min(currentSpeed, maxSpeed));
-
-        // Применение направления
-    if (isChangingDirection && currentSpeed <= 0.1f)
-    {
-        currentDirection = requestedDirection;
-        isChangingDirection = false;
-        
-        // 🔑 КЛЮЧЕВОЕ: при смене направления корректируем currentNode
-        if (currentDirection == TramDirection.Reverse && currentNode.previous != null)
         {
-            // При переключении на реверс: currentNode становится следующим узлом вперёд
-            // (чтобы targetNode стал предыдущим)
-            RouteNode nextNode = currentNode.GetNextNode(switchMode);
-            if (nextNode != null)
-                currentNode = nextNode;
+            requestedDirection = TramDirection.Forward;
+            isChangingDirection = true;
         }
-        
-        Debug.Log($"Направление: {currentDirection}, Текущий узел: {currentNode.nodeName}");
-    }
+        if (Input.GetKeyDown(KeyCode.E) && currentDirection != TramDirection.Reverse)
+        {
+            requestedDirection = TramDirection.Reverse;
+            isChangingDirection = true;
+        }
 
-        // Стрелки
+        // === 2. Управление целевой скоростью ===
+        HandleSpeedInput();
+
+        // === 3. Применение направления (когда скорость ~0) ===
+        if (isChangingDirection && currentSpeed <= 0.1f)
+        {
+            currentDirection = requestedDirection;
+            isChangingDirection = false;
+            
+            if (currentDirection == TramDirection.Reverse && currentNode.previous != null)
+            {
+                RouteNode nextNode = currentNode.GetNextNode(switchMode);
+                if (nextNode != null)
+                    currentNode = nextNode;
+            }
+            Debug.Log($"Направление: {currentDirection}, Узел: {currentNode.nodeName}");
+        }
+
+        // === 4. Управление стрелками ===
         if (Input.GetKeyDown(KeyCode.F)) switchMode = SwitchMode.Neutral;
         if (Input.GetKeyDown(KeyCode.A)) switchMode = SwitchMode.Left;
         if (Input.GetKeyDown(KeyCode.D)) switchMode = SwitchMode.Right;
     }
 
-void FixedUpdate()
+    // === НОВАЯ МЕТОДИКА: обработка ввода скорости ===
+    private void HandleSpeedInput()
 {
-    // --- 1. Подсчёт расстояния (для остановок) ---
-    float segment = Vector3.Distance(transform.position, lastPosition);
-    totalDistanceTraveled += segment;
-    lastPosition = transform.position;
-
-    if (currentSpeed <= 0.01f)
+    // === Экстренный тормоз (удержание) ===
+    if (Input.GetKey(KeyCode.Space))
     {
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
+        isEmergencyBraking = true;
+        targetSpeed = 0f; // Цель — остановка
         return;
     }
-
-    // --- 2. Определяем целевой узел ---
-    RouteNode targetNode = null;
-    Vector3 railDirection = Vector3.zero;
-
-    if (currentDirection == TramDirection.Forward)
+    else
     {
-        // Вперёд: target = следующий узел от текущего
-        targetNode = currentNode.GetNextNode(switchMode);
-        if (targetNode != null)
-            railDirection = targetNode.transform.position - currentNode.transform.position;
-    }
-    else // Reverse
-    {
-        // Назад: target = предыдущий узел от текущего
-        targetNode = currentNode.previous;
-        if (targetNode != null)
-            railDirection = currentNode.transform.position - targetNode.transform.position;
+        isEmergencyBraking = false;
     }
 
-    if (targetNode == null)
+    // === Плавное изменение целевой скорости при удержании ===
+    if (Input.GetKey(KeyCode.W))
     {
-        rb.linearVelocity = Vector3.zero;
-        Debug.Log("Конец маршрута!");
-        return;
+        // Увеличиваем целевую скорость плавно
+        targetSpeed += speedChangeRate * Time.deltaTime;
+        targetSpeed = Mathf.Min(targetSpeed, maxSpeed); // не превышаем макс
     }
-
-    // --- 3. Направление к цели (для вращения и движения) ---
-    Vector3 toTarget = targetNode.transform.position - transform.position;
-    toTarget.y = 0;
-
-    if (toTarget == Vector3.zero) return;
-
-    // --- 4. Поворот модели (под одну кабину) ---
-    Vector3 desiredForward = (currentDirection == TramDirection.Forward) 
-        ? toTarget.normalized      // Вперёд: смотрим НА цель
-        : -toTarget.normalized;    // Назад: смотрим ОТ цели
-
-    Quaternion targetRot = Quaternion.LookRotation(desiredForward);
-    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.fixedDeltaTime * 8f);
-
-    // --- 5. Движение ---
-    float directionMultiplier = (currentDirection == TramDirection.Forward) ? 1f : -1f;
-    rb.linearVelocity = transform.forward * currentSpeed * directionMultiplier;
-
-    // --- 6. Проверка достижения узла ---
-    float distanceToTarget = Vector3.Distance(transform.position, targetNode.transform.position);
-
-    if (distanceToTarget < 5f)
+    
+    if (Input.GetKey(KeyCode.S))
     {
-        // ✅ Достигли цели — теперь этот узел становится current
-        currentNode = targetNode;
-        Debug.Log($"✓ Достигнут: {currentNode.nodeName} ({currentDirection})");
-
-        // Логика остановок (только вперёд)
-        if (currentDirection == TramDirection.Forward && currentNode.isStopNode)
-        {
-            isInStopZone = true;
-            stopZoneEndDistance = totalDistanceTraveled + currentNode.stopZoneLength;
-            currentStopName = currentNode.stopName;
-            hasStoppedInZone = false;
-        }
-    }
-
-    // --- 7. Выход из зоны остановки ---
-    if (isInStopZone && totalDistanceTraveled >= stopZoneEndDistance)
-    {
-        if (!hasStoppedInZone)
-            evaluator?.addPenalty($"Пропуск остановки: {currentStopName}");
-        
-        isInStopZone = false;
-        currentStopName = "";
-        hasStoppedInZone = false;
-    }
-
-    // --- 8. Фиксация остановки в зоне ---
-    if (isInStopZone && currentSpeed <= 0.5f)
-    {
-        hasStoppedInZone = true;
+        // Уменьшаем целевую скорость плавно
+        targetSpeed -= speedChangeRate * Time.deltaTime;
+        targetSpeed = Mathf.Max(targetSpeed, 0f); // не уходим в минус
     }
 }
 
-    // --- Ключевой метод: определяет следующую цель ---
-    private RouteNode GetNextTargetNode()
+    void FixedUpdate()
     {
-        if (currentNode == null) return null;
+        // --- Подсчёт пройденного расстояния (для остановок) ---
+        float segment = Vector3.Distance(transform.position, lastPosition);
+        totalDistanceTraveled += segment;
+        lastPosition = transform.position;
+
+        // === 5. Плавное стремление к целевой скорости ===
+        AdjustSpeedToTarget();
+
+        // === 6. Ограничение скорости ===
+        currentSpeed = Mathf.Max(0f, Mathf.Min(currentSpeed, maxSpeed));
+
+         CheckTrafficLightViolations();
+
+        // === 7. Определяем целевой узел ===
+        RouteNode targetNode = null;
+        Vector3 railDirection = Vector3.zero;
 
         if (currentDirection == TramDirection.Forward)
         {
-            return currentNode.GetNextNode(switchMode);
+            targetNode = currentNode.GetNextNode(switchMode);
+            if (targetNode != null)
+                railDirection = targetNode.transform.position - currentNode.transform.position;
         }
         else // Reverse
         {
-            return currentNode.previous;
+            targetNode = currentNode.previous;
+            if (targetNode != null)
+                railDirection = currentNode.transform.position - targetNode.transform.position;
+        }
+
+        if (targetNode == null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            return;
+        }
+
+        // === 8. Направление к цели ===
+        Vector3 toTarget = targetNode.transform.position - transform.position;
+        toTarget.y = 0;
+        if (toTarget == Vector3.zero) return;
+
+        // === 9. Поворот модели (под одну кабину) ===
+        Vector3 desiredForward = (currentDirection == TramDirection.Forward) 
+            ? toTarget.normalized
+            : -toTarget.normalized;
+
+        Quaternion targetRot = Quaternion.LookRotation(desiredForward);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, Time.fixedDeltaTime * 8f);
+
+        // === 10. Движение ===
+        float directionMultiplier = (currentDirection == TramDirection.Forward) ? 1f : -1f;
+        rb.linearVelocity = transform.forward * currentSpeed * directionMultiplier;
+
+        // === 11. Проверка достижения узла ===
+        float distanceToTarget = Vector3.Distance(transform.position, targetNode.transform.position);
+
+        if (distanceToTarget < 5f)
+        {
+            currentNode = targetNode;
+            Debug.Log($"✓ Достигнут: {currentNode.nodeName} ({currentDirection})");
+
+            if (currentDirection == TramDirection.Forward && currentNode.isStopNode)
+            {
+                isInStopZone = true;
+                stopZoneEndDistance = totalDistanceTraveled + currentNode.stopZoneLength;
+                currentStopName = currentNode.stopName;
+                hasStoppedInZone = false;
+            }
+        }
+
+        // === 12. Выход из зоны остановки ===
+        if (isInStopZone && totalDistanceTraveled >= stopZoneEndDistance)
+        {
+            if (!hasStoppedInZone)
+                evaluator?.addPenalty($"Пропуск остановки: {currentStopName}");
+            
+            isInStopZone = false;
+            currentStopName = "";
+            hasStoppedInZone = false;
+        }
+
+        // === 13. Фиксация остановки в зоне ===
+        if (isInStopZone && currentSpeed <= 0.5f)
+        {
+            hasStoppedInZone = true;
         }
     }
 
-    private void CheckSpeedLimit()
+    // === НОВАЯ МЕТОДИКА: плавная подстройка скорости к целевой ===
+    private void AdjustSpeedToTarget()
     {
-        if (currentNode == null || evaluator == null) return;
-        if (currentNode.hasSpeedLimit && currentSpeed > currentNode.maxSpeed + 0.5f)
+        // === Экстренное торможение (с инерцией) ===
+        if (isEmergencyBraking)
         {
-            evaluator.addPenalty($"Превышение скорости: {currentSpeed:F1} > {currentNode.maxSpeed:F1}");
+            // Сильное, но плавное торможение
+            currentSpeed -= emergencyBrakePower * Time.fixedDeltaTime;
+            currentSpeed = Mathf.Max(currentSpeed, 0f); // не уходим в минус
+            return;
+        }
+
+        // === Обычное стремление к целевой скорости ===
+        if (currentSpeed < targetSpeed)
+        {
+            // Разгон: плавно увеличиваем скорость
+            currentSpeed += acceleration * Time.fixedDeltaTime;
+            currentSpeed = Mathf.Min(currentSpeed, targetSpeed);
+        }
+        else if (currentSpeed > targetSpeed)
+        {
+            // Торможение: плавно уменьшаем скорость
+            currentSpeed -= brakePower * Time.fixedDeltaTime;
+            currentSpeed = Mathf.Max(currentSpeed, targetSpeed);
+        }
+        // Если currentSpeed == targetSpeed — держим скорость (инерция уже учтена в brakePower/acceleration)
+    }
+
+        private void CheckSpeedLimit()
+        {
+            if (currentNode == null || evaluator == null) return;
+            if (currentNode.hasSpeedLimit && currentSpeed > currentNode.maxSpeed + 0.5f)
+            {
+                evaluator.addPenalty($"Превышение скорости: {currentSpeed:F1} > {currentNode.maxSpeed:F1}");
+            }
+        }
+
+        // === Публичные методы для UI ===
+        public float GetCurrentSpeed() => currentSpeed;
+        public float GetTargetSpeed() => targetSpeed;
+        public void SetTargetSpeed(float value) => targetSpeed = Mathf.Clamp(value, 0f, maxSpeed);
+
+        [Header("Анимация рычага")]
+        public Transform leverPivot; // Перетащи сюда объект LeverPivot из иерархии
+        public float maxLeverAngle = 45f; // Насколько сильно отклоняется рычаг (в градусах)
+
+        void LateUpdate()
+        {
+            UpdateLeverVisuals();
+        }
+
+        void UpdateLeverVisuals()
+        {
+            if (leverPivot == null) return;
+
+            // 1. Вычисляем нормализованную скорость (от 0 до 1)
+            float normalizedSpeed = targetSpeed / maxSpeed;
+
+            // 2. Считаем угол: если скорость 0, угол 0. Если макс, угол maxLeverAngle
+            float angle = normalizedSpeed * maxLeverAngle;
+
+            // 3. Вращаем ПУСТОЙ ОБЪЕКТ (Pivot), а не сам рычаг!
+            // Предполагаем, что рычаг отклоняется вперёд (по оси X).
+            // Если вращается не туда, поменяй X на Z или убери минус.
+            leverPivot.localEulerAngles = new Vector3(-angle, 0, 0); 
+    }
+
+    [Header("Светофоры")]
+    public TrafficLight[] trafficLights;
+
+    // Словари для отслеживания состояния пересечения каждого светофора
+    private System.Collections.Generic.Dictionary<TrafficLight, bool> approachingOnRed = new();
+    private System.Collections.Generic.Dictionary<TrafficLight, bool> hasCrossedOnRed = new();
+
+    void CheckTrafficLightViolations()
+    {
+        if (trafficLights == null) return;
+
+        Vector3 moveDir = (currentDirection == TramDirection.Forward) ? transform.forward : -transform.forward;
+
+        foreach (var light in trafficLights)
+        {
+            if (!approachingOnRed.ContainsKey(light)) continue;
+
+            Vector3 toStopLine = light.StopLinePosition - transform.position;
+            float distance = toStopLine.magnitude;
+            bool isAhead = Vector3.Dot(moveDir, toStopLine.normalized) > 0; // Линия впереди?
+
+            // 1. Сброс флагов: если зелёный или мы уехали далеко
+            if (!light.IsRed || distance > 15f)
+            {
+                approachingOnRed[light] = false;
+                hasCrossedOnRed[light] = false;
+            }
+
+            // 2. Фиксируем подъезд на красный
+            if (isAhead && distance < 8f && light.IsRed)
+            {
+                approachingOnRed[light] = true;
+            }
+
+            // 3. Фиксируем пересечение: если линия оказалась позади, 
+            //    но мы подъезжали к ней на красный
+            if (!isAhead && approachingOnRed[light] && !hasCrossedOnRed[light])
+            {
+                hasCrossedOnRed[light] = true;
+                evaluator?.addPenalty($"Проезд на красный: {light.name}");
+                Debug.Log($"🚨 Нарушение: Проезд на красный ({light.name})");
+            }
         }
     }
+
 }
