@@ -18,20 +18,24 @@ public abstract class ButtonLeverBase : MonoBehaviour
         }
 
         startRotation = leverHandle.localRotation;
+        OnInit(); // Вызываем виртуальный метод вместо Start()
         UpdateTargetRotation();
     }
 
     void Update()
     {
-        UpdateTargetRotation();
+        OnUpdate(); // Виртуальный метод для наследников
         if (leverHandle != null)
             leverHandle.localRotation = Quaternion.Slerp(leverHandle.localRotation, targetRotation, Time.deltaTime * rotationSpeed);
     }
 
+    // Виртуальные методы — наследники могут переопределить
+    protected virtual void OnInit() { }
+    protected virtual void OnUpdate() { }
+    
     // Абстрактный метод — должен быть реализован в наследнике
     protected abstract void UpdateTargetRotation();
 
-    // Вызывается извне (например, при изменении логики)
     public void Refresh()
     {
         UpdateTargetRotation();

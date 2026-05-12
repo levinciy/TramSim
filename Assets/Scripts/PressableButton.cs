@@ -14,6 +14,8 @@ public class PressableButton : MonoBehaviour
     private Vector3 originalLocalPosition;
     private Vector3 targetPosition;
     private bool isPressed = false;
+    private bool keyPressed = false;
+    private bool mousePressed = false ;
 
 
     private AudioSource audioSource;
@@ -35,19 +37,23 @@ public class PressableButton : MonoBehaviour
 
     void Update()
     {
-        bool shouldPress = Input.GetKey(triggerKey);
+        
+        keyPressed = Input.GetKey(triggerKey);
+        bool shouldPress = keyPressed || mousePressed;
         
         if (shouldPress && !isPressed)
         {
             isPressed = true;
             targetPosition = originalLocalPosition + pressedOffset;
             StartSound();
+  
         }
         else if (!shouldPress && isPressed)
         {
             isPressed = false;
             targetPosition = originalLocalPosition;
             StopSound();
+
         }
 
         buttonPart.localPosition = Vector3.Lerp(buttonPart.localPosition, targetPosition, Time.deltaTime * pressSpeed);
@@ -71,6 +77,24 @@ public class PressableButton : MonoBehaviour
             audioSource.Stop();
             isSoundPlaying = false;
         }
+    }
+
+
+    public void TriggerPress()
+    {
+        //Debug.Log("pressed");
+        // isPressed = true;
+        // targetPosition = originalLocalPosition + pressedOffset;
+        // StartSound();'
+        mousePressed = true;
+    }
+
+    public void TriggerRelease()
+    {
+        // isPressed = false;
+        // targetPosition = originalLocalPosition;
+        // StopSound();
+        mousePressed = false;
     }
 
 

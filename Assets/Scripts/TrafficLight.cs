@@ -87,6 +87,50 @@ public class TrafficLight : MonoBehaviour {
     // Смещение стоп-линии от центра светофора (вперёд по оси Z светофора)
     public float stopLineOffset = 2f; 
 
-    public Vector3 StopLinePosition => transform.position + transform.forward * stopLineOffset;
+    public Vector3 StopLinePosition => transform.position ;
+
+    // public void ForceSetLight(LightColors color)
+    // {
+    //     SetLight(color);
+    // }
+
+    public void ForceSetLight(LightColors color)
+    {
+        // Останавливаем автоматический цикл
+        if (cycleCoroutine != null) StopCoroutine(cycleCoroutine);
+        
+        // Устанавливаем цвет и обновляем визуал
+        SetLight(color);
+        cycleCoroutine = StartCoroutine(LightCycleFromColor(color));
+        
+        //Debug.Log($"🚦 Светофор {name} принудительно переключён на {color}");
+    }
+
+    private IEnumerator LightCycleFromColor(LightColors startColor)
+    {
+        // Определяем, с какого цвета продолжать
+        if (startColor == LightColors.Green)
+        {
+            yield return new WaitForSeconds(greenDuration);
+            SetLight(LightColors.Yellow);
+        }
+        
+        if (startColor == LightColors.Yellow || startColor == LightColors.Green)
+        {
+            yield return new WaitForSeconds(yellowDuration);
+            SetLight(LightColors.Red);
+        }
+        
+        // Дальше обычный цикл
+        while (true)
+        {
+            yield return new WaitForSeconds(redDuration);
+            SetLight(LightColors.Green);
+            yield return new WaitForSeconds(greenDuration);
+            SetLight(LightColors.Yellow);
+            yield return new WaitForSeconds(yellowDuration);
+            SetLight(LightColors.Red);
+        }
+    }
 }
 

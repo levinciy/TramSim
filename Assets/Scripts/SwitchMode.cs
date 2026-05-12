@@ -1,6 +1,9 @@
+using UnityEngine;
 public enum SwitchMode
 {
-    Neutral,
     Left,
+    Neutral,
     Right
 }
+
+public enum TurnSignalState { Left, Neutral, Right }

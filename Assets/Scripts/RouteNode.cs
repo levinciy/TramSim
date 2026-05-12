@@ -15,6 +15,9 @@ public class RouteNode : MonoBehaviour
     public bool hasSpeedLimit = false;
     [Tooltip("Максимальная разрешённая скорость в м/с")]
     public float maxSpeed=15f;
+    
+    public int routeId = 0;
+    public bool isFailPoint = false;
 
     // public bool isStopZone = false; 
     // public float stopZoneRadius = 8f;
