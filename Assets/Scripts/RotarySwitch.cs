@@ -6,7 +6,7 @@ public class RotarySwitch : ButtonLeverBase
     public string tooltipText = "Переключатель";
     public string[] positionNames;
     //[Header("Тип переключателя")]
-    public enum SwitchType { Arrows, Gear, Custom, TurnSignals }
+    public enum SwitchType { Arrows, Gear, Custom, TurnSignals, DoorFront, DoorMiddle, DoorRear }
     public SwitchType switchType;
     
     //[Header("Позиции")]
@@ -23,6 +23,8 @@ public class RotarySwitch : ButtonLeverBase
     
     [Header("Ссылка на трамвай")]
     public TramOnRails tramController;
+    [Header("Двери")]
+    public DoorController[] controlledDoors;
 
     // События
     public System.Action<SwitchMode> OnArrowsChanged;
@@ -114,6 +116,19 @@ public class RotarySwitch : ButtonLeverBase
                 OnTurnSignalChanged?.Invoke(signal);
                 tramController.turnSignal = signal;
                 break;
+            case SwitchType.DoorFront:
+            case SwitchType.DoorMiddle:
+            case SwitchType.DoorRear:
+                bool shouldOpen = (currentPosition == 1); // 0 = закрыто, 1 = открыто
+                foreach (var door in controlledDoors)
+                {
+                    if (door != null)
+                    {
+                        if (shouldOpen) door.Open();
+                        else door.Close();
+                    }
+                }
+                break;
             
             case SwitchType.Custom:
                 OnCustomChanged?.Invoke(currentPosition);
@@ -162,7 +177,7 @@ public class RotarySwitch : ButtonLeverBase
     public void HandleDrag(float mouseX, float mouseY)
     {
         // Определяем основное направление движения мыши
-        float delta = Mathf.Abs(mouseX) > Mathf.Abs(mouseY) ? mouseX : -mouseY;
+        float delta = Mathf.Abs(mouseX) > Mathf.Abs(mouseY) ? mouseX : mouseY;
         
         // 🎯 НАКОПЛЕНИЕ: прибавляем изменение к текущему углу, а не к стартовому
         float sensitivity = 1.0f; // Теперь 1.0 будет работать адекватно
